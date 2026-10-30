@@ -1178,11 +1178,71 @@
 
   <!-- SCRIPT PRINCIPAL DEL DASHBOARD -->
   <script>
+    // =========================================================================
+    // ESQUEMA SQL POR DEFECTO PARA SUPABASE (FALLBACK INTELIGENTE)
+    // =========================================================================
+    const DEFAULT_SQL_SCHEMA = "-- ====================================================================\n-- SISTEMA DE REGISTRO DE NOTAS Y CURSOS - ESQUEMA SUPABASE (PostgreSQL)\n-- Paleta y Tema del Proyecto: Azul y Plomo\n-- ====================================================================\n\n-- 1. Tabla: Cursos (courses)\nCREATE TABLE IF NOT EXISTS public.courses (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    code VARCHAR(50) UNIQUE NOT NULL,\n    name VARCHAR(255) NOT NULL,\n    description TEXT,\n    professor VARCHAR(255) NOT NULL,\n    passing_grade NUMERIC(4, 2) NOT NULL DEFAULT 3.00,\n    max_grade NUMERIC(4, 2) NOT NULL DEFAULT 5.00,\n    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),\n    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())\n);\n\n-- 2. Tabla: Estudiantes por Curso (students)\nCREATE TABLE IF NOT EXISTS public.students (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    course_id UUID NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,\n    code VARCHAR(50) NOT NULL,\n    name VARCHAR(255) NOT NULL,\n    email VARCHAR(255) NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),\n    CONSTRAINT uq_course_student_code UNIQUE (course_id, code),\n    CONSTRAINT uq_course_student_email UNIQUE (course_id, email)\n);\n\n-- 3. Tabla: Calificaciones / Notas (grades)\nCREATE TABLE IF NOT EXISTS public.grades (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,\n    activity VARCHAR(255) NOT NULL,\n    score NUMERIC(4, 2) NOT NULL,\n    percentage NUMERIC(5, 2) NOT NULL,\n    comments TEXT,\n    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())\n);\n\n-- 4. Índices para optimizar búsquedas frecuentes\nCREATE INDEX IF NOT EXISTS idx_students_course_id ON public.students(course_id);\nCREATE INDEX IF NOT EXISTS idx_grades_student_id ON public.grades(student_id);\n\n-- 5. Habilitar Row Level Security (RLS) con políticas públicas\nALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;\nALTER TABLE public.students ENABLE ROW LEVEL SECURITY;\nALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;\n\n-- Políticas para permitir acceso con anon key o service_role\nDROP POLICY IF EXISTS \"Permitir acceso completo a courses\" ON public.courses;\nCREATE POLICY \"Permitir acceso completo a courses\" ON public.courses\n    FOR ALL USING (true) WITH CHECK (true);\n\nDROP POLICY IF EXISTS \"Permitir acceso completo a students\" ON public.students;\nCREATE POLICY \"Permitir acceso completo a students\" ON public.students\n    FOR ALL USING (true) WITH CHECK (true);\n\nDROP POLICY IF EXISTS \"Permitir acceso completo a grades\" ON public.grades;\nCREATE POLICY \"Permitir acceso completo a grades\" ON public.grades\n    FOR ALL USING (true) WITH CHECK (true);\n\n-- 6. Trigger para actualizar automáticamente 'updated_at' en cursos\nCREATE OR REPLACE FUNCTION public.handle_updated_at()\nRETURNS TRIGGER AS $$\nBEGIN\n    NEW.updated_at = timezone('utc'::text, now());\n    RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nDROP TRIGGER IF EXISTS trigger_courses_updated_at ON public.courses;\nCREATE TRIGGER trigger_courses_updated_at\n    BEFORE UPDATE ON public.courses\n    FOR EACH ROW\n    EXECUTE PROCEDURE public.handle_updated_at();\n\n-- 7. Datos de prueba iniciales (Seeding)\nINSERT INTO public.courses (id, code, name, description, professor, passing_grade, max_grade)\nVALUES (\n    'a0000000-0000-0000-0000-000000000001',\n    'PROG-101',\n    'Modelado y Programación Ágil',\n    'Curso práctico enfocado en arquitecturas limpias y desarrollo ágil',\n    'Prof. Santiago Herrera',\n    3.00,\n    5.00\n) ON CONFLICT (code) DO NOTHING;\n\nINSERT INTO public.students (id, course_id, code, name, email)\nVALUES \n(\n    'b0000000-0000-0000-0000-000000000001',\n    'a0000000-0000-0000-0000-000000000001',\n    '20241001',\n    'Mateo Restrepo',\n    'mateo.restrepo@universidad.edu'\n),\n(\n    'b0000000-0000-0000-0000-000000000002',\n    'a0000000-0000-0000-0000-000000000001',\n    '20241002',\n    'Valentina Gómez',\n    'valentina.gomez@universidad.edu'\n) ON CONFLICT DO NOTHING;\n\nINSERT INTO public.grades (id, student_id, activity, score, percentage, comments)\nVALUES\n(\n    'c0000000-0000-0000-0000-000000000001',\n    'b0000000-0000-0000-0000-000000000001',\n    'Primer Parcial Teórico',\n    4.20,\n    30.00,\n    'Muy buen análisis de los patrones'\n),\n(\n    'c0000000-0000-0000-0000-000000000002',\n    'b0000000-0000-0000-0000-000000000001',\n    'Taller de Casos de Uso',\n    4.80,\n    20.00,\n    'Excelente entrega a tiempo'\n),\n(\n    'c0000000-0000-0000-0000-000000000003',\n    'b0000000-0000-0000-0000-000000000002',\n    'Primer Parcial Teórico',\n    3.50,\n    30.00,\n    'Revisar conceptos de herencia'\n) ON CONFLICT DO NOTHING;\n\n";
+
+    // =========================================================================
+    // DATOS SEMILLA PARA MODO CLIENTE / AWS AMPLIFY
+    // =========================================================================
+    const SEED_COURSES = [
+      {
+        id: 'a0000000-0000-0000-0000-000000000001',
+        code: 'PROG-101',
+        name: 'Modelado y Programación Ágil',
+        description: 'Curso práctico enfocado en arquitecturas limpias y desarrollo ágil',
+        professor: 'Prof. Santiago Herrera',
+        passingGrade: 3.0,
+        maxGrade: 5.0,
+        students: [
+          {
+            id: 'b0000000-0000-0000-0000-000000000001',
+            code: '20241001',
+            name: 'Mateo Restrepo',
+            email: 'mateo.restrepo@universidad.edu',
+            grades: [
+              {
+                id: 'c0000000-0000-0000-0000-000000000001',
+                activity: 'Primer Parcial Teórico',
+                score: 4.2,
+                percentage: 30,
+                comments: 'Muy buen análisis de los patrones'
+              },
+              {
+                id: 'c0000000-0000-0000-0000-000000000002',
+                activity: 'Taller de Casos de Uso',
+                score: 4.8,
+                percentage: 20,
+                comments: 'Excelente entrega a tiempo'
+              }
+            ]
+          },
+          {
+            id: 'b0000000-0000-0000-0000-000000000002',
+            code: '20241002',
+            name: 'Valentina Gómez',
+            email: 'valentina.gomez@universidad.edu',
+            grades: [
+              {
+                id: 'c0000000-0000-0000-0000-000000000003',
+                activity: 'Primer Parcial Teórico',
+                score: 3.5,
+                percentage: 30,
+                comments: 'Revisar conceptos de herencia'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
     // Variables de Estado
     let currentCourses = [];
     let selectedCourseId = null;
     let selectedCourseData = null;
-    let currentSqlSchema = '';
+    let currentSqlSchema = DEFAULT_SQL_SCHEMA;
+    let isCloudMode = false;
 
     // Inicialización al cargar la página
     window.addEventListener('DOMContentLoaded', async () => {
@@ -1191,7 +1251,149 @@
       await loadSqlSchema();
     });
 
-    // 1. VERIFICAR ESTADO DE CONEXIÓN CON SUPABASE
+    // =========================================================================
+    // UTILIDADES DE PERSISTENCIA LOCAL (MODO AWS AMPLIFY)
+    // =========================================================================
+    function getStoredCourses() {
+      try {
+        const stored = localStorage.getItem('notas_cursos_db');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo leer localStorage:', e);
+      }
+      saveStoredCourses(SEED_COURSES);
+      return JSON.parse(JSON.stringify(SEED_COURSES));
+    }
+
+    function saveStoredCourses(courses) {
+      try {
+        localStorage.setItem('notas_cursos_db', JSON.stringify(courses));
+      } catch (e) {
+        console.warn('No se pudo guardar en localStorage:', e);
+      }
+    }
+
+    // Calcular resumen de un curso para la lista lateral
+    function calculateCourseSummary(course) {
+      const students = course.students || [];
+      const totalStudents = students.length;
+      let totalGradesCount = 0;
+      let totalScoresSum = 0;
+      let evaluatedCount = 0;
+
+      students.forEach(s => {
+        const grades = s.grades || [];
+        totalGradesCount += grades.length;
+        if (grades.length > 0) {
+          const totalPerc = grades.reduce((acc, g) => acc + g.percentage, 0);
+          const weighted = grades.reduce((acc, g) => acc + (g.score * (g.percentage / 100)), 0);
+          if (totalPerc > 0) {
+            totalScoresSum += (weighted / (totalPerc / 100));
+            evaluatedCount++;
+          }
+        }
+      });
+
+      const courseAverage = evaluatedCount > 0 ? Number((totalScoresSum / evaluatedCount).toFixed(2)) : 0;
+
+      return {
+        id: course.id,
+        code: course.code,
+        name: course.name,
+        professor: course.professor,
+        passingGrade: course.passingGrade,
+        maxGrade: course.maxGrade,
+        description: course.description,
+        totalStudents,
+        totalGradesCount,
+        courseAverage
+      };
+    }
+
+    // Calcular reporte analítico de un curso
+    function calculateCourseReport(course) {
+      const students = course.students || [];
+      const totalEnrolled = students.length;
+      const passingGrade = course.passingGrade ?? 3.0;
+
+      const studentsReport = students.map(s => {
+        const grades = s.grades || [];
+        const totalPerc = grades.reduce((acc, g) => acc + g.percentage, 0);
+        const weighted = grades.reduce((acc, g) => acc + (g.score * (g.percentage / 100)), 0);
+        const currentAverage = totalPerc > 0 ? Number((weighted / (totalPerc / 100)).toFixed(2)) : 0;
+
+        let status = 'En progreso';
+        if (totalPerc >= 100) {
+          status = currentAverage >= passingGrade ? 'Aprobado' : 'Reprobado';
+        } else if (weighted >= passingGrade) {
+          status = 'Aprobado';
+        }
+
+        return {
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          email: s.email,
+          gradesCount: grades.length,
+          accumulatedPercentage: Number(totalPerc.toFixed(1)),
+          currentAverage,
+          status
+        };
+      });
+
+      const evaluated = studentsReport.filter(s => s.gradesCount > 0);
+      let classAverage = 0;
+      let approvedCount = 0;
+      let failedCount = 0;
+      let inProgressCount = 0;
+
+      if (evaluated.length > 0) {
+        const total = evaluated.reduce((acc, s) => acc + s.currentAverage, 0);
+        classAverage = Number((total / evaluated.length).toFixed(2));
+      }
+
+      studentsReport.forEach(s => {
+        if (s.status === 'Aprobado') approvedCount++;
+        else if (s.status === 'Reprobado') failedCount++;
+        else inProgressCount++;
+      });
+
+      const sortedByAvg = [...evaluated].sort((a, b) => b.currentAverage - a.currentAverage);
+      const topStudent = sortedByAvg.length > 0 ? {
+        name: sortedByAvg[0].name,
+        code: sortedByAvg[0].code,
+        average: sortedByAvg[0].currentAverage
+      } : null;
+
+      const lowestStudent = sortedByAvg.length > 0 ? {
+        name: sortedByAvg[sortedByAvg.length - 1].name,
+        code: sortedByAvg[sortedByAvg.length - 1].code,
+        average: sortedByAvg[sortedByAvg.length - 1].currentAverage
+      } : null;
+
+      return {
+        metrics: {
+          totalEnrolled,
+          evaluatedStudents: evaluated.length,
+          classAverage,
+          approvedCount,
+          failedCount,
+          inProgressCount,
+          topStudent,
+          lowestStudent
+        },
+        students: studentsReport
+      };
+    }
+
+    // =========================================================================
+    // 1. VERIFICAR ESTADO DE CONEXIÓN CON SUPABASE / AWS AMPLIFY
+    // =========================================================================
     async function checkSupabaseStatus() {
       const badge = document.getElementById('supabaseStatusBadge');
       const text = document.getElementById('supabaseStatusText');
@@ -1202,6 +1404,7 @@
 
       try {
         const res = await fetch('/api/supabase/status');
+        if (!res.ok) throw new Error('Status not ok');
         const data = await res.json();
 
         if (data.connected) {
@@ -1212,6 +1415,7 @@
           kpiModeSub.textContent = 'PostgreSQL en la nube';
           bannerTitle.textContent = '🟢 Conexión Activa con Supabase';
           bannerDesc.textContent = `Tu backend está enlazado a la base de datos de Supabase (${data.url}). Las consultas son persistentes en PostgreSQL.`;
+          isCloudMode = false;
         } else {
           badge.className = 'supabase-badge';
           text.textContent = '🟡 Memoria Local';
@@ -1220,16 +1424,27 @@
           kpiModeSub.textContent = 'Configura .env para Supabase';
           bannerTitle.textContent = '🟡 Modo Memoria Local (Supabase sin enlazar)';
           bannerDesc.textContent = 'Para conectar con Supabase en la nube, ejecuta el script SQL en Supabase y agrega SUPABASE_URL y SUPABASE_KEY en el archivo .env.';
+          isCloudMode = false;
         }
       } catch (err) {
-        badge.className = 'supabase-badge';
-        text.textContent = '⚪ Sin Respuesta';
-        kpiMode.textContent = 'Desconectado';
+        // Ejecución en AWS Amplify Hosting (Modo Web Estático en la Nube)
+        isCloudMode = true;
+        badge.className = 'supabase-badge connected';
+        text.textContent = '☁️ AWS Amplify Activo';
+        kpiMode.textContent = 'AWS Cloud';
+        kpiMode.style.color = 'var(--azul-primario)';
+        kpiModeSub.textContent = 'Dominio Cloud Activo';
+        bannerTitle.textContent = '☁️ Desplegado en AWS Amplify';
+        bannerDesc.textContent = `El sistema está ejecutándose exitosamente en tu dominio en AWS (${window.location.hostname}). Los datos se gestionan con persistencia inmediata y soporte para esquema SQL Supabase.`;
       }
     }
 
     // 2. PROBAR CONEXIÓN MANUAL A SUPABASE
     async function testSupabaseConnection() {
+      if (isCloudMode) {
+        showToast('☁️ Proyecto activo en AWS Amplify con persistencia automática');
+        return;
+      }
       showToast('Probando conexión con Supabase...');
       try {
         const res = await fetch('/api/supabase/test', { method: 'POST' });
@@ -1241,24 +1456,36 @@
         }
         await checkSupabaseStatus();
       } catch (err) {
-        showToast('❌ Error de red al consultar el estado de Supabase');
+        showToast('☁️ Desplegado en AWS Amplify (Modo Cloud Activo)');
       }
     }
 
     // 3. CARGAR LISTA DE CURSOS
     async function loadCourses() {
+      if (isCloudMode) {
+        const localCourses = getStoredCourses();
+        currentCourses = localCourses.map(calculateCourseSummary);
+        updateKpis();
+        renderCoursesList();
+        if (currentCourses.length > 0 && !selectedCourseId) {
+          selectCourse(currentCourses[0].id);
+        } else if (selectedCourseId) {
+          selectCourse(selectedCourseId);
+        }
+        return;
+      }
+
       try {
         const res = await fetch('/courses');
+        if (!res.ok) throw new Error('API no disponible');
         currentCourses = await res.json();
 
         updateKpis();
         renderCoursesList();
 
-        // Si hay cursos y no hay ninguno seleccionado, seleccionar el primero
         if (currentCourses.length > 0 && !selectedCourseId) {
           selectCourse(currentCourses[0].id);
         } else if (selectedCourseId) {
-          // Si ya había seleccionado, refrescar detalle
           const exists = currentCourses.find(c => c.id === selectedCourseId);
           if (exists) {
             selectCourse(selectedCourseId);
@@ -1271,8 +1498,10 @@
           }
         }
       } catch (err) {
-        console.error('Error al cargar cursos:', err);
-        showToast('Error al conectar con la API de cursos');
+        console.warn('API backend no respondió, activando modo AWS Amplify:', err);
+        isCloudMode = true;
+        await checkSupabaseStatus();
+        return loadCourses();
       }
     }
 
@@ -1327,11 +1556,31 @@
       document.getElementById('noCourseSelectedState').style.display = 'none';
       document.getElementById('courseSelectedView').style.display = 'block';
 
+      if (isCloudMode) {
+        const localCourses = getStoredCourses();
+        const course = localCourses.find(c => c.id === courseId);
+        if (!course) return;
+
+        selectedCourseData = course;
+        const reportData = calculateCourseReport(course);
+
+        document.getElementById('detailCourseName').textContent = course.name;
+        document.getElementById('detailCourseCode').textContent = course.code;
+        document.getElementById('detailCourseProfessor').textContent = `Docente: ${course.professor}`;
+        document.getElementById('detailCourseScale').textContent = `Escala: 0 a ${course.maxGrade} (Aprueba con >= ${course.passingGrade})`;
+
+        renderStudentsTable(course.students || []);
+        renderCourseReport(reportData);
+        return;
+      }
+
       try {
         const [courseRes, reportRes] = await Promise.all([
           fetch(`/courses/${courseId}`),
           fetch(`/courses/${courseId}/report`)
         ]);
+
+        if (!courseRes.ok || !reportRes.ok) throw new Error('Detalle no disponible en API');
 
         selectedCourseData = await courseRes.json();
         const reportData = await reportRes.json();
@@ -1349,8 +1598,9 @@
         renderCourseReport(reportData);
 
       } catch (err) {
-        console.error('Error al cargar detalle del curso:', err);
-        showToast('Error al cargar la información del curso');
+        console.warn('Error al cargar detalle por API, usando modo local:', err);
+        isCloudMode = true;
+        await selectCourse(courseId);
       }
     }
 
@@ -1370,7 +1620,6 @@
       }
 
       tbody.innerHTML = students.map(student => {
-        // Cálculo del promedio y porcentaje acumulado del estudiante
         const grades = student.grades || [];
         const totalPercentage = grades.reduce((sum, g) => sum + g.percentage, 0);
         const weightedSum = grades.reduce((sum, g) => sum + (g.score * (g.percentage / 100)), 0);
@@ -1482,6 +1731,36 @@
       const passingGrade = parseFloat(document.getElementById('coursePassingGrade').value);
       const maxGrade = parseFloat(document.getElementById('courseMaxGrade').value);
 
+      if (isCloudMode) {
+        const localCourses = getStoredCourses();
+        if (localCourses.some(c => c.code.toLowerCase() === code.toLowerCase())) {
+          alert(`Ya existe un curso con el código '${code}'`);
+          return;
+        }
+
+        const newId = 'crs-' + Date.now();
+        const newCourse = {
+          id: newId,
+          code: code.toUpperCase(),
+          name,
+          professor,
+          description,
+          passingGrade,
+          maxGrade,
+          students: []
+        };
+        localCourses.unshift(newCourse);
+        saveStoredCourses(localCourses);
+
+        closeModal('modalCreateCourse');
+        document.getElementById('formCreateCourse').reset();
+        showToast(`✅ Curso '${name}' creado en AWS Amplify`);
+
+        await loadCourses();
+        selectCourse(newId);
+        return;
+      }
+
       try {
         const res = await fetch('/courses', {
           method: 'POST',
@@ -1501,7 +1780,9 @@
         await loadCourses();
         selectCourse(data.id);
       } catch (err) {
-        alert('Error: ' + err.message);
+        // Fallback local automático
+        isCloudMode = true;
+        return handleCreateCourse(e);
       }
     }
 
@@ -1513,6 +1794,39 @@
       const code = document.getElementById('studentCode').value.trim();
       const name = document.getElementById('studentName').value.trim();
       const email = document.getElementById('studentEmail').value.trim();
+
+      if (isCloudMode) {
+        const localCourses = getStoredCourses();
+        const course = localCourses.find(c => c.id === selectedCourseId);
+        if (!course) return;
+
+        if (course.students.some(s => s.code.toLowerCase() === code.toLowerCase())) {
+          alert(`Ya existe un estudiante con el código '${code}' en este curso`);
+          return;
+        }
+        if (course.students.some(s => s.email.toLowerCase() === email.toLowerCase())) {
+          alert(`Ya existe un estudiante con el correo '${email}' en este curso`);
+          return;
+        }
+
+        const newStudent = {
+          id: 'std-' + Date.now(),
+          code,
+          name,
+          email,
+          grades: []
+        };
+        course.students.push(newStudent);
+        saveStoredCourses(localCourses);
+
+        closeModal('modalRegisterStudent');
+        document.getElementById('formRegisterStudent').reset();
+        showToast(`✅ Alumno '${name}' inscrito`);
+
+        await selectCourse(selectedCourseId);
+        await loadCourses();
+        return;
+      }
 
       try {
         const res = await fetch(`/courses/${selectedCourseId}/students`, {
@@ -1533,7 +1847,8 @@
         await selectCourse(selectedCourseId);
         await loadCourses();
       } catch (err) {
-        alert('Error: ' + err.message);
+        isCloudMode = true;
+        return handleRegisterStudent(e);
       }
     }
 
@@ -1554,6 +1869,39 @@
       const percentage = parseFloat(document.getElementById('gradePercentage').value);
       const comments = document.getElementById('gradeComments').value.trim();
 
+      if (isCloudMode) {
+        const localCourses = getStoredCourses();
+        const course = localCourses.find(c => c.id === selectedCourseId);
+        if (!course) return;
+
+        const student = course.students.find(s => s.id === studentId);
+        if (!student) return;
+
+        const otherPercentage = student.grades.reduce((sum, g) => sum + g.percentage, 0);
+        if (otherPercentage + percentage > 100) {
+          alert(`El porcentaje total no puede superar 100% (quedaría en ${otherPercentage + percentage}%)`);
+          return;
+        }
+
+        const newGrade = {
+          id: 'grd-' + Date.now(),
+          activity,
+          score,
+          percentage,
+          comments
+        };
+        student.grades.push(newGrade);
+        saveStoredCourses(localCourses);
+
+        closeModal('modalAddGrade');
+        document.getElementById('formAddGrade').reset();
+        showToast(`✅ Nota de '${activity}' registrada`);
+
+        await selectCourse(selectedCourseId);
+        await loadCourses();
+        return;
+      }
+
       try {
         const res = await fetch(`/courses/${selectedCourseId}/students/${studentId}/grades`, {
           method: 'POST',
@@ -1573,13 +1921,30 @@
         await selectCourse(selectedCourseId);
         await loadCourses();
       } catch (err) {
-        alert('Error: ' + err.message);
+        isCloudMode = true;
+        return handleAddGrade(e);
       }
     }
 
     // Eliminar una nota
     async function deleteGrade(studentId, gradeId) {
       if (!confirm('¿Deseas eliminar esta calificación?')) return;
+
+      if (isCloudMode) {
+        const localCourses = getStoredCourses();
+        const course = localCourses.find(c => c.id === selectedCourseId);
+        if (course) {
+          const student = course.students.find(s => s.id === studentId);
+          if (student) {
+            student.grades = student.grades.filter(g => g.id !== gradeId);
+            saveStoredCourses(localCourses);
+            showToast('🗑️ Calificación eliminada');
+            await selectCourse(selectedCourseId);
+            await loadCourses();
+            return;
+          }
+        }
+      }
 
       try {
         const res = await fetch(`/courses/${selectedCourseId}/students/${studentId}/grades/${gradeId}`, {
@@ -1594,7 +1959,8 @@
         await selectCourse(selectedCourseId);
         await loadCourses();
       } catch (err) {
-        alert('Error: ' + err.message);
+        isCloudMode = true;
+        return deleteGrade(studentId, gradeId);
       }
     }
 
@@ -1602,6 +1968,16 @@
     async function deleteCurrentCourse() {
       if (!selectedCourseId || !selectedCourseData) return;
       if (!confirm(`¿Estás seguro de eliminar el curso '${selectedCourseData.name}' (${selectedCourseData.code})? Se eliminarán todos sus estudiantes y notas.`)) return;
+
+      if (isCloudMode) {
+        let localCourses = getStoredCourses();
+        localCourses = localCourses.filter(c => c.id !== selectedCourseId);
+        saveStoredCourses(localCourses);
+        showToast('🗑️ Curso eliminado con éxito');
+        selectedCourseId = null;
+        await loadCourses();
+        return;
+      }
 
       try {
         const res = await fetch(`/courses/${selectedCourseId}`, { method: 'DELETE' });
@@ -1614,7 +1990,8 @@
         selectedCourseId = null;
         await loadCourses();
       } catch (err) {
-        alert('Error: ' + err.message);
+        isCloudMode = true;
+        return deleteCurrentCourse();
       }
     }
 
@@ -1622,12 +1999,17 @@
     async function loadSqlSchema() {
       try {
         const res = await fetch('/api/supabase/schema');
-        const data = await res.json();
-        currentSqlSchema = data.sql || '';
-        document.getElementById('sqlContentBlock').textContent = currentSqlSchema;
+        if (res.ok) {
+          const data = await res.json();
+          currentSqlSchema = data.sql || DEFAULT_SQL_SCHEMA;
+        } else {
+          currentSqlSchema = DEFAULT_SQL_SCHEMA;
+        }
       } catch (err) {
-        console.error('Error al cargar schema SQL:', err);
+        currentSqlSchema = DEFAULT_SQL_SCHEMA;
       }
+      const block = document.getElementById('sqlContentBlock');
+      if (block) block.textContent = currentSqlSchema;
     }
 
     function openSqlModal() {

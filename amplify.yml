@@ -10,6 +10,7 @@ frontend:
     build:
       commands:
         - npm run build
+        - node scripts/copy-public.js
   artifacts:
     baseDirectory: dist
     files:
@@ -17,4 +18,3 @@ frontend:
   cache:
     paths:
       - .npm/**/*
-
