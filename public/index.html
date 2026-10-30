@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Registro de Notas y Cursos | Supabase (Azul y Plomo)</title>
+  <style>
+    /* ==========================================================================
+       SISTEMA DE DISEÑO: AZUL Y PLOMO (BLUE & LEAD SLATE)
+       ========================================================================== */
+    :root {
+      /* Paleta Azul */
+      --azul-primario: #2563eb;
+      --azul-hover: #1d4ed8;
+      --azul-oscuro: #1e3a8a;
+      --azul-fondo-suave: #eff6ff;
+      --azul-borde-suave: #bfdbfe;
+      --azul-texto: #1e40af;
+      --azul-celeste: #0284c7;
+
+      /* Paleta Plomo (Slate / Pizarra / Charcoal) */
+      --plomo-900: #0f172a; /* Plomo muy oscuro para textos principales y barra */
+      --plomo-800: #1e293b; /* Plomo oscuro para topbar y tarjetas destacadas */
+      --plomo-700: #334155; /* Plomo carbón para subtítulos e íconos */
+      --plomo-600: #475569; /* Plomo medio para etiquetas */
+      --plomo-500: #64748b; /* Plomo neutro */
+      --plomo-400: #94a3b8; /* Plomo claro para bordes secundarios */
+      --plomo-300: #cbd5e1; /* Plomo tenue */
+      --plomo-200: #e2e8f0; /* Plomo muy tenue para bordes de tarjetas */
+      --plomo-100: #f1f5f9; /* Plomo fondo de paneles */
+      --plomo-50:  #f8fafc; /* Plomo fondo general */
+
+      /* Estados */
+      --estado-aprobado-bg: #dbeafe;
+      --estado-aprobado-text: #1e40af;
+      --estado-reprobado-bg: #f1f5f9;
+      --estado-reprobado-text: #475569;
+      --estado-progreso-bg: #e2e8f0;
+      --estado-progreso-text: #1e293b;
+
+      --radio: 10px;
+      --sombra-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --sombra-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
+      --sombra-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--plomo-50);
+      color: var(--plomo-900);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER & NAVEGACIÓN EN AZUL Y PLOMO */
+    header {
+      background: linear-gradient(135deg, var(--plomo-900) 0%, var(--plomo-800) 60%, var(--azul-oscuro) 100%);
+      color: #ffffff;
+      padding: 1rem 2rem;
+      border-bottom: 4px solid var(--azul-primario);
+      box-shadow: var(--sombra-md);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-icon {
+      background: var(--azul-primario);
+      color: #ffffff;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radio);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
+
+    .brand-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title p {
+      font-size: 0.825rem;
+      color: var(--plomo-300);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* BADGE SUPABASE STATUS */
+    .supabase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--plomo-600);
+      color: var(--plomo-200);
+    }
+
+    .supabase-badge.connected {
+      background: rgba(37, 99, 235, 0.2);
+      border-color: var(--azul-primario);
+      color: #bfdbfe;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .supabase-badge.connected .status-dot {
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    /* BOTONES */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background-color: var(--azul-primario);
+      color: #ffffff;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--azul-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: var(--plomo-700);
+      color: #ffffff;
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--plomo-600);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--plomo-600);
+      color: var(--plomo-200);
+    }
+
+    .btn-outline:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-color: var(--plomo-400);
+      color: #ffffff;
+    }
+
+    .btn-danger {
+      background-color: #e2e8f0;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .btn-danger:hover {
+      background-color: #fee2e2;
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+
+    /* CONTENEDOR PRINCIPAL */
+    main {
+      max-width: 1400px;
+      margin: 1.5rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* BANNER INFORMATIVO SUPABASE */
+    .supabase-banner {
+      background: #ffffff;
+      border: 1px solid var(--plomo-200);
+      border-left: 5px solid var(--azul-primario);
+      padding: 1rem 1.5rem;
+      border-radius: var(--radio);
+      box-shadow: var(--sombra-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .supabase-info h3 {
+      font-size: 0.95rem;
+      color: var(--plomo-900);
+      margin-bottom: 0.2rem;
+    }
+
+    .supabase-info p {
+      font-size: 0.85rem;
+      color: var(--plomo-600);
+    }
+
+    /* RESUMEN DE MÉTRICAS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: #ffffff;
+      border: 1px solid var(--plomo-200);
+      border-radius: var(--radio);
+      padding: 1.1rem;
+      box-shadow: var(--sombra-sm);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--plomo-600);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--azul-oscuro);
+      margin-top: 0.25rem;
+    }
+
+    .stat-sub {
+      font-size: 0.775rem;
+      color: var(--plomo-500);
+      margin-top: 0.25rem;
+    }
+
+    /* LAYOUT PRINCIPAL DE 2 COLUMNAS */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .workspace-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* PANEL LATERAL DE CURSOS */
+    .panel {
+      background: #ffffff;
+      border: 1px solid var(--plomo-200);
+      border-radius: var(--radio);
+      box-shadow: var(--sombra-sm);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background-color: var(--plomo-100);
+      border-bottom: 1px solid var(--plomo-200);
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--plomo-800);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-body {
+      padding: 1.25rem;
+    }
+
+    /* LISTA DE CURSOS */
+    .courses-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .course-card {
+      background: var(--plomo-50);
+      border: 1px solid var(--plomo-200);
+      border-radius: 8px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .course-card:hover {
+      border-color: var(--azul-primario);
+      transform: translateY(-2px);
+      box-shadow: var(--sombra-sm);
+    }
+
+    .course-card.active {
+      background: var(--azul-fondo-suave);
+      border-color: var(--azul-primario);
+      border-left: 5px solid var(--azul-primario);
+    }
+
+    .course-badge {
+      display: inline-block;
+      background: var(--plomo-800);
+      color: #ffffff;
+      font-size: 0.725rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.4rem;
+    }
+
+    .course-card.active .course-badge {
+      background: var(--azul-primario);
+    }
+
+    .course-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--plomo-900);
+      margin-bottom: 0.25rem;
+    }
+
+    .course-professor {
+      font-size: 0.825rem;
+      color: var(--plomo-600);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .course-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--plomo-500);
+      border-top: 1px solid var(--plomo-200);
+      padding-top: 0.5rem;
+    }
+
+    .course-avg {
+      font-weight: 700;
+      color: var(--azul-texto);
+    }
+
+    /* DETALLE DEL CURSO */
+    .course-detail-header {
+      background: linear-gradient(to right, var(--plomo-100), #ffffff);
+      border-bottom: 1px solid var(--plomo-200);
+      padding: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .course-detail-title h2 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--plomo-900);
+    }
+
+    .course-tags {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 0.775rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      background: var(--plomo-200);
+      color: var(--plomo-700);
+      font-weight: 600;
+    }
+
+    .tag-blue {
+      background: var(--azul-fondo-suave);
+      color: var(--azul-texto);
+      border: 1px solid var(--azul-borde-suave);
+    }
+
+    /* PESTAÑAS (TABS) EN AZUL Y PLOMO */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--plomo-200);
+      background: var(--plomo-50);
+      padding: 0 1.25rem;
+    }
+
+    .tab-btn {
+      padding: 0.85rem 1.25rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--plomo-600);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--azul-primario);
+    }
+
+    .tab-btn.active {
+      color: var(--azul-primario);
+      border-bottom-color: var(--azul-primario);
+      background: #ffffff;
+    }
+
+    .tab-content {
+      padding: 1.25rem;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* TABLA DE ESTUDIANTES Y NOTAS */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--plomo-200);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background-color: var(--plomo-100);
+      color: var(--plomo-700);
+      font-weight: 700;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--plomo-200);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--plomo-200);
+      color: var(--plomo-800);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: var(--plomo-50);
+    }
+
+    /* BADGES DE ESTADO ACADÉMICO */
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.775rem;
+      font-weight: 700;
+    }
+
+    .badge-aprobado {
+      background: var(--estado-aprobado-bg);
+      color: var(--estado-aprobado-text);
+      border: 1px solid var(--azul-borde-suave);
+    }
+
+    .badge-reprobado {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .badge-progreso {
+      background: var(--estado-progreso-bg);
+      color: var(--estado-progreso-text);
+      border: 1px solid var(--plomo-300);
+    }
+
+    /* BARRA DE PROGRESO DE PORCENTAJE EVALUADO */
+    .progress-bar-container {
+      width: 100%;
+      background: var(--plomo-200);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.3rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--azul-primario), var(--azul-celeste));
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* SECCIÓN DE CALIFICACIONES DESPLEGADAS */
+    .grades-subtable {
+      background: var(--plomo-50);
+      padding: 0.8rem;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      border: 1px dashed var(--plomo-300);
+    }
+
+    .grade-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #ffffff;
+      border: 1px solid var(--plomo-300);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.775rem;
+      margin: 0.2rem;
+    }
+
+    .grade-score {
+      font-weight: 800;
+      color: var(--azul-texto);
+    }
+
+    /* TARJETAS DE REPORTE ANALÍTICO */
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .report-card {
+      background: #ffffff;
+      border: 1px solid var(--plomo-200);
+      border-left: 4px solid var(--azul-primario);
+      border-radius: var(--radio);
+      padding: 1.1rem;
+    }
+
+    .report-card.slate {
+      border-left-color: var(--plomo-600);
+    }
+
+    .report-card h4 {
+      font-size: 0.8rem;
+      color: var(--plomo-600);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .report-card .big-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--plomo-900);
+      margin: 0.25rem 0;
+    }
+
+    /* MODALES */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(3px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 540px;
+      border: 1px solid var(--plomo-200);
+      box-shadow: var(--sombra-lg);
+      overflow: hidden;
+      transform: translateY(15px);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-backdrop.open .modal-card {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      background: var(--plomo-800);
+      color: #ffffff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--azul-primario);
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--plomo-300);
+      font-size: 1.35rem;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--plomo-700);
+      margin-bottom: 0.35rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border: 1px solid var(--plomo-300);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: var(--plomo-900);
+      background: #ffffff;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--azul-primario);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .modal-footer {
+      background: var(--plomo-100);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      border-top: 1px solid var(--plomo-200);
+    }
+
+    /* CODIGO SQL PRE */
+    pre.sql-code {
+      background: var(--plomo-900);
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.8rem;
+      max-height: 380px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.4;
+      border: 1px solid var(--plomo-700);
+    }
+
+    /* ALERTAS / TOAST */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--plomo-900);
+      color: #ffffff;
+      padding: 0.85rem 1.35rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--azul-primario);
+      box-shadow: var(--sombra-lg);
+      font-size: 0.875rem;
+      font-weight: 500;
+      z-index: 2000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    /* FOOTER */
+    footer {
+      background: var(--plomo-900);
+      color: var(--plomo-400);
+      text-align: center;
+      padding: 1.25rem;
+      font-size: 0.825rem;
+      border-top: 1px solid var(--plomo-800);
+      margin-top: 3rem;
+    }
+
+    footer strong {
+      color: var(--azul-celeste);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--plomo-500);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      color: var(--plomo-400);
+      margin-bottom: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA DE NAVEGACIÓN SUPERIOR (AZUL Y PLOMO) -->
+  <header>
+    <div class="header-content">
+      <div class="brand">
+        <div class="brand-icon">🎓</div>
+        <div class="brand-title">
+          <h1>Registro de Notas y Cursos</h1>
+          <p>Conexión a Base de Datos en Supabase • Tema Azul y Plomo</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="supabaseStatusBadge" class="supabase-badge">
+          <span class="status-dot"></span>
+          <span id="supabaseStatusText">Verificando Supabase...</span>
+        </div>
+
+        <button class="btn btn-outline btn-sm" onclick="testSupabaseConnection()">
+          ⚡ Probar Conexión
+        </button>
+
+        <button class="btn btn-secondary btn-sm" onclick="openSqlModal()">
+          📜 Script SQL Supabase
+        </button>
+
+        <a href="/api/docs" target="_blank" class="btn btn-primary btn-sm">
+          📚 Swagger API
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main>
+
+    <!-- BANNER DE CONEXIÓN A SUPABASE -->
+    <div class="supabase-banner">
+      <div class="supabase-info">
+        <h3 id="bannerTitle">Base de Datos: Supabase (PostgreSQL)</h3>
+        <p id="bannerDesc">El sistema está preparado para persistir cursos, estudiantes y notas en Supabase con esquema relacional.</p>
+      </div>
+      <div>
+        <button class="btn btn-primary btn-sm" onclick="openSqlModal()">
+          ⚙️ Instrucciones de Enlace
+        </button>
+      </div>
+    </div>
+
+    <!-- TARJETAS DE MÉTRICAS GENERALES -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Cursos Activos</span>
+        <span class="stat-value" id="kpiCourses">0</span>
+        <span class="stat-sub">Registrados en la plataforma</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Total Estudiantes</span>
+        <span class="stat-value" id="kpiStudents">0</span>
+        <span class="stat-sub">Inscritos en todos los cursos</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Notas Registradas</span>
+        <span class="stat-value" id="kpiGrades">0</span>
+        <span class="stat-sub">Evaluaciones ponderadas</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Modo de Almacenamiento</span>
+        <span class="stat-value" id="kpiMode" style="font-size: 1.25rem; margin-top: 0.6rem;">Cargando...</span>
+        <span class="stat-sub" id="kpiModeSub">Supabase / Memoria Local</span>
+      </div>
+    </div>
+
+    <!-- WORKSPACE: CURSOS Y DETALLE -->
+    <div class="workspace-grid">
+
+      <!-- COLUMNA IZQUIERDA: LISTA DE CURSOS -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📚 Cursos</div>
+          <button class="btn btn-primary btn-sm" onclick="openCreateCourseModal()">+ Nuevo</button>
+        </div>
+        <div class="panel-body">
+          <div id="coursesList" class="courses-list">
+            <div class="empty-state">
+              <div class="empty-state-icon">⏳</div>
+              <p>Cargando cursos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: DETALLE DEL CURSO SELECCIONADO -->
+      <div class="panel" id="courseDetailPanel">
+        <div class="empty-state" id="noCourseSelectedState">
+          <div class="empty-state-icon">👈</div>
+          <h3>Selecciona un curso</h3>
+          <p>Elige un curso del panel izquierdo para ver sus alumnos, notas ponderadas y reportes analíticos.</p>
+        </div>
+
+        <div id="courseSelectedView" style="display: none;">
+          <!-- CABECERA DEL CURSO -->
+          <div class="course-detail-header">
+            <div class="course-detail-title">
+              <h2 id="detailCourseName">-</h2>
+              <div class="course-tags">
+                <span class="tag tag-blue" id="detailCourseCode">-</span>
+                <span class="tag" id="detailCourseProfessor">Profesor: -</span>
+                <span class="tag" id="detailCourseScale">Escala: 0 a 5.0 (Aprueba con 3.0)</span>
+              </div>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-primary btn-sm" onclick="openRegisterStudentModal()">+ Inscribir Alumno</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteCurrentCourse()">Eliminar Curso</button>
+            </div>
+          </div>
+
+          <!-- PESTAÑAS (TABS) -->
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tabStudents')">👥 Estudiantes & Calificaciones</button>
+            <button class="tab-btn" onclick="switchTab('tabReport')">📊 Reporte Analítico del Salón</button>
+          </div>
+
+          <!-- PESTAÑA 1: ESTUDIANTES Y NOTAS -->
+          <div id="tabStudents" class="tab-content active">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Estudiante / Correo</th>
+                    <th>% Evaluado</th>
+                    <th>Promedio Actual</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                  <!-- Se llena dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- PESTAÑA 2: REPORTE ANALÍTICO -->
+          <div id="tabReport" class="tab-content">
+            <div class="report-grid">
+              <div class="report-card">
+                <h4>Promedio del Salón</h4>
+                <div class="big-number" id="repClassAvg">0.00</div>
+                <small style="color: var(--plomo-500);">Calculado sobre notas vigentes</small>
+              </div>
+
+              <div class="report-card">
+                <h4>Estudiantes Aprobados</h4>
+                <div class="big-number" id="repApproved" style="color: var(--azul-texto);">0</div>
+                <small style="color: var(--plomo-500);">Cumplen nota mínima</small>
+              </div>
+
+              <div class="report-card slate">
+                <h4>Estudiantes en Progreso</h4>
+                <div class="big-number" id="repInProgress" style="color: var(--plomo-700);">0</div>
+                <small style="color: var(--plomo-500);">Faltan porcentajes por evaluar</small>
+              </div>
+
+              <div class="report-card slate">
+                <h4>Estudiantes Reprobados</h4>
+                <div class="big-number" id="repFailed" style="color: #991b1b;">0</div>
+                <small style="color: var(--plomo-500);">Por debajo del umbral mínimo</small>
+              </div>
+            </div>
+
+            <!-- CUADRO DE HONOR Y ALERTA -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+              <div style="background: var(--azul-fondo-suave); border: 1px solid var(--azul-borde-suave); padding: 1rem; border-radius: 8px;">
+                <h4 style="color: var(--azul-texto); font-size: 0.85rem; font-weight: 700;">🌟 Mejor Promedio del Curso</h4>
+                <p id="repHonorRoll" style="font-size: 1.1rem; font-weight: 800; color: var(--plomo-900); margin-top: 0.3rem;">-</p>
+              </div>
+              <div style="background: var(--plomo-100); border: 1px solid var(--plomo-300); padding: 1rem; border-radius: 8px;">
+                <h4 style="color: var(--plomo-700); font-size: 0.85rem; font-weight: 700;">📉 Menor Promedio</h4>
+                <p id="repLowestRoll" style="font-size: 1.1rem; font-weight: 800; color: var(--plomo-900); margin-top: 0.3rem;">-</p>
+              </div>
+            </div>
+
+            <!-- RANKING COMPLETO -->
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--plomo-800); margin-bottom: 0.75rem;">Ranking General del Curso</h4>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Puesto</th>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>% Evaluado</th>
+                    <th>Promedio Ponderado</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="rankingTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL: CREAR CURSO -->
+  <div id="modalCreateCourse" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>+ Crear Nuevo Curso</h3>
+        <button class="close-btn" onclick="closeModal('modalCreateCourse')">&times;</button>
+      </div>
+      <form id="formCreateCourse" onsubmit="handleCreateCourse(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Código del Curso *</label>
+              <input type="text" id="courseCode" class="form-control" placeholder="Ej: MAT-201" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Docente / Profesor *</label>
+              <input type="text" id="courseProfessor" class="form-control" placeholder="Ej: Dra. Elena Ramos" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nombre de la Materia *</label>
+            <input type="text" id="courseName" class="form-control" placeholder="Ej: Cálculo Multivariable" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <textarea id="courseDescription" class="form-control" rows="2" placeholder="Breve resumen de los contenidos"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nota Aprobatoria (Mínimo)</label>
+              <input type="number" step="0.1" id="coursePassingGrade" class="form-control" value="3.0" min="0" max="100" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nota Máxima Posible</label>
+              <input type="number" step="0.1" id="courseMaxGrade" class="form-control" value="5.0" min="0" max="100" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" style="color:var(--plomo-700);" onclick="closeModal('modalCreateCourse')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Curso</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: INSCRIBIR ESTUDIANTE -->
+  <div id="modalRegisterStudent" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>+ Inscribir Estudiante</h3>
+        <button class="close-btn" onclick="closeModal('modalRegisterStudent')">&times;</button>
+      </div>
+      <form id="formRegisterStudent" onsubmit="handleRegisterStudent(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Código o Matrícula *</label>
+            <input type="text" id="studentCode" class="form-control" placeholder="Ej: 20261010" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nombre Completo *</label>
+            <input type="text" id="studentName" class="form-control" placeholder="Ej: Diana Salazar" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Correo Electrónico *</label>
+            <input type="email" id="studentEmail" class="form-control" placeholder="Ej: diana.salazar@universidad.edu" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" style="color:var(--plomo-700);" onclick="closeModal('modalRegisterStudent')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Inscribir Alumno</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR NOTA -->
+  <div id="modalAddGrade" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>+ Registrar Calificación Ponderada</h3>
+        <button class="close-btn" onclick="closeModal('modalAddGrade')">&times;</button>
+      </div>
+      <form id="formAddGrade" onsubmit="handleAddGrade(event)">
+        <input type="hidden" id="gradeStudentId">
+        <div class="modal-body">
+          <p id="gradeStudentInfo" style="font-size:0.875rem; color:var(--azul-texto); font-weight:600; margin-bottom:1rem;"></p>
+          <div class="form-group">
+            <label class="form-label">Actividad o Concepto *</label>
+            <input type="text" id="gradeActivity" class="form-control" placeholder="Ej: Primer Parcial, Taller 1, Quiz" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nota Obtenida *</label>
+              <input type="number" step="0.01" id="gradeScore" class="form-control" placeholder="Ej: 4.5" min="0" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Porcentaje / Peso (%) *</label>
+              <input type="number" step="0.1" id="gradePercentage" class="form-control" placeholder="Ej: 30" min="0.1" max="100" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comentarios u Observaciones</label>
+            <input type="text" id="gradeComments" class="form-control" placeholder="Ej: Buen dominio conceptual en preguntas de desarrollo">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" style="color:var(--plomo-700);" onclick="closeModal('modalAddGrade')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Nota</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SCRIPT SQL PARA SUPABASE -->
+  <div id="modalSql" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3>📜 Esquema SQL para Base de Datos en Supabase</h3>
+        <button class="close-btn" onclick="closeModal('modalSql')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--plomo-700); margin-bottom:0.75rem;">
+          Para enlazar este sistema a tu base de datos en <strong>Supabase</strong>:
+          <ol style="margin-left: 1.25rem; font-size: 0.825rem; color: var(--plomo-600); margin-bottom: 0.75rem;">
+            <li>Entra a tu consola de Supabase y selecciona tu proyecto.</li>
+            <li>Abre la sección <strong>SQL Editor</strong> en la barra lateral izquierda.</li>
+            <li>Pega el código SQL inferior y haz clic en <strong>RUN</strong>.</li>
+            <li>En tu archivo <code>.env</code> coloca tu <code>SUPABASE_URL</code> y <code>SUPABASE_KEY</code>.</li>
+          </ol>
+        </p>
+        <pre class="sql-code" id="sqlContentBlock">Cargando esquema SQL...</pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" style="color:var(--plomo-700);" onclick="closeModal('modalSql')">Cerrar</button>
+        <button type="button" class="btn btn-primary" onclick="copySqlToClipboard()">📋 Copiar Código SQL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICACIÓN TOAST -->
+  <div id="toast"></div>
+
+  <!-- PIE DE PÁGINA (AZUL Y PLOMO) -->
+  <footer>
+    <p>Sistema Académico de Registro de Notas y Cursos • Enlazado con <strong>Supabase (PostgreSQL)</strong> • Paleta de Color: <strong>Azul Rey y Plomo Pizarra</strong></p>
+  </footer>
+
+  <!-- SCRIPT PRINCIPAL DEL DASHBOARD -->
+  <script>
+    // Variables de Estado
+    let currentCourses = [];
+    let selectedCourseId = null;
+    let selectedCourseData = null;
+    let currentSqlSchema = '';
+
+    // Inicialización al cargar la página
+    window.addEventListener('DOMContentLoaded', async () => {
+      await checkSupabaseStatus();
+      await loadCourses();
+      await loadSqlSchema();
+    });
+
+    // 1. VERIFICAR ESTADO DE CONEXIÓN CON SUPABASE
+    async function checkSupabaseStatus() {
+      const badge = document.getElementById('supabaseStatusBadge');
+      const text = document.getElementById('supabaseStatusText');
+      const kpiMode = document.getElementById('kpiMode');
+      const kpiModeSub = document.getElementById('kpiModeSub');
+      const bannerTitle = document.getElementById('bannerTitle');
+      const bannerDesc = document.getElementById('bannerDesc');
+
+      try {
+        const res = await fetch('/api/supabase/status');
+        const data = await res.json();
+
+        if (data.connected) {
+          badge.className = 'supabase-badge connected';
+          text.textContent = '🟢 Enlazado a Supabase';
+          kpiMode.textContent = 'Supabase DB';
+          kpiMode.style.color = 'var(--azul-primario)';
+          kpiModeSub.textContent = 'PostgreSQL en la nube';
+          bannerTitle.textContent = '🟢 Conexión Activa con Supabase';
+          bannerDesc.textContent = `Tu backend está enlazado a la base de datos de Supabase (${data.url}). Las consultas son persistentes en PostgreSQL.`;
+        } else {
+          badge.className = 'supabase-badge';
+          text.textContent = '🟡 Memoria Local';
+          kpiMode.textContent = 'Memoria Local';
+          kpiMode.style.color = 'var(--plomo-700)';
+          kpiModeSub.textContent = 'Configura .env para Supabase';
+          bannerTitle.textContent = '🟡 Modo Memoria Local (Supabase sin enlazar)';
+          bannerDesc.textContent = 'Para conectar con Supabase en la nube, ejecuta el script SQL en Supabase y agrega SUPABASE_URL y SUPABASE_KEY en el archivo .env.';
+        }
+      } catch (err) {
+        badge.className = 'supabase-badge';
+        text.textContent = '⚪ Sin Respuesta';
+        kpiMode.textContent = 'Desconectado';
+      }
+    }
+
+    // 2. PROBAR CONEXIÓN MANUAL A SUPABASE
+    async function testSupabaseConnection() {
+      showToast('Probando conexión con Supabase...');
+      try {
+        const res = await fetch('/api/supabase/test', { method: 'POST' });
+        const data = await res.json();
+        if (data.connected) {
+          showToast('✅ ¡Conexión con Supabase verificada exitosamente!');
+        } else {
+          showToast(`⚠️ Supabase: ${data.message}`);
+        }
+        await checkSupabaseStatus();
+      } catch (err) {
+        showToast('❌ Error de red al consultar el estado de Supabase');
+      }
+    }
+
+    // 3. CARGAR LISTA DE CURSOS
+    async function loadCourses() {
+      try {
+        const res = await fetch('/courses');
+        currentCourses = await res.json();
+
+        updateKpis();
+        renderCoursesList();
+
+        // Si hay cursos y no hay ninguno seleccionado, seleccionar el primero
+        if (currentCourses.length > 0 && !selectedCourseId) {
+          selectCourse(currentCourses[0].id);
+        } else if (selectedCourseId) {
+          // Si ya había seleccionado, refrescar detalle
+          const exists = currentCourses.find(c => c.id === selectedCourseId);
+          if (exists) {
+            selectCourse(selectedCourseId);
+          } else if (currentCourses.length > 0) {
+            selectCourse(currentCourses[0].id);
+          } else {
+            selectedCourseId = null;
+            document.getElementById('noCourseSelectedState').style.display = 'block';
+            document.getElementById('courseSelectedView').style.display = 'none';
+          }
+        }
+      } catch (err) {
+        console.error('Error al cargar cursos:', err);
+        showToast('Error al conectar con la API de cursos');
+      }
+    }
+
+    // Actualizar tarjetas de métricas
+    function updateKpis() {
+      document.getElementById('kpiCourses').textContent = currentCourses.length;
+
+      let totalStudents = 0;
+      let totalGrades = 0;
+
+      currentCourses.forEach(c => {
+        totalStudents += (c.totalStudents || 0);
+        totalGrades += (c.totalGradesCount || 0);
+      });
+
+      document.getElementById('kpiStudents').textContent = totalStudents;
+      document.getElementById('kpiGrades').textContent = totalGrades;
+    }
+
+    // Renderizar lista de cursos en la columna izquierda
+    function renderCoursesList() {
+      const container = document.getElementById('coursesList');
+      if (currentCourses.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📂</div>
+            <p>No hay cursos creados aún.</p>
+            <button class="btn btn-primary btn-sm" style="margin-top:0.75rem;" onclick="openCreateCourseModal()">+ Crear Primer Curso</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = currentCourses.map(course => `
+        <div class="course-card ${course.id === selectedCourseId ? 'active' : ''}" onclick="selectCourse('${course.id}')">
+          <span class="course-badge">${escapeHtml(course.code)}</span>
+          <div class="course-name">${escapeHtml(course.name)}</div>
+          <div class="course-professor">👨‍🏫 ${escapeHtml(course.professor)}</div>
+          <div class="course-meta">
+            <span>👥 ${course.totalStudents || 0} alumno(s)</span>
+            <span>Promedio: <strong class="course-avg">${course.courseAverage ? course.courseAverage.toFixed(2) : '0.00'}</strong></span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 4. SELECCIONAR Y CARGAR DETALLE DE UN CURSO
+    async function selectCourse(courseId) {
+      selectedCourseId = courseId;
+      renderCoursesList();
+
+      document.getElementById('noCourseSelectedState').style.display = 'none';
+      document.getElementById('courseSelectedView').style.display = 'block';
+
+      try {
+        const [courseRes, reportRes] = await Promise.all([
+          fetch(`/courses/${courseId}`),
+          fetch(`/courses/${courseId}/report`)
+        ]);
+
+        selectedCourseData = await courseRes.json();
+        const reportData = await reportRes.json();
+
+        // Actualizar Cabecera
+        document.getElementById('detailCourseName').textContent = selectedCourseData.name;
+        document.getElementById('detailCourseCode').textContent = selectedCourseData.code;
+        document.getElementById('detailCourseProfessor').textContent = `Docente: ${selectedCourseData.professor}`;
+        document.getElementById('detailCourseScale').textContent = `Escala: 0 a ${selectedCourseData.maxGrade} (Aprueba con >= ${selectedCourseData.passingGrade})`;
+
+        // Renderizar Estudiantes
+        renderStudentsTable(selectedCourseData.students || []);
+
+        // Renderizar Reporte
+        renderCourseReport(reportData);
+
+      } catch (err) {
+        console.error('Error al cargar detalle del curso:', err);
+        showToast('Error al cargar la información del curso');
+      }
+    }
+
+    // Renderizar tabla de estudiantes
+    function renderStudentsTable(students) {
+      const tbody = document.getElementById('studentsTableBody');
+      if (students.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding: 2rem; color: var(--plomo-500);">
+              No hay estudiantes inscritos en este curso.<br>
+              <button class="btn btn-primary btn-sm" style="margin-top:0.75rem;" onclick="openRegisterStudentModal()">+ Inscribir Estudiante</button>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = students.map(student => {
+        // Cálculo del promedio y porcentaje acumulado del estudiante
+        const grades = student.grades || [];
+        const totalPercentage = grades.reduce((sum, g) => sum + g.percentage, 0);
+        const weightedSum = grades.reduce((sum, g) => sum + (g.score * (g.percentage / 100)), 0);
+        const currentAverage = totalPercentage > 0 ? (weightedSum / (totalPercentage / 100)).toFixed(2) : '0.00';
+
+        let badgeClass = 'badge-progreso';
+        let statusText = 'En progreso';
+
+        if (totalPercentage >= 100) {
+          if (Number(currentAverage) >= selectedCourseData.passingGrade) {
+            badgeClass = 'badge-aprobado';
+            statusText = 'Aprobado';
+          } else {
+            badgeClass = 'badge-reprobado';
+            statusText = 'Reprobado';
+          }
+        } else if (weightedSum >= selectedCourseData.passingGrade) {
+          badgeClass = 'badge-aprobado';
+          statusText = 'Aprobado';
+        }
+
+        const gradesHtml = grades.map(g => `
+          <span class="grade-chip" title="${g.comments ? escapeHtml(g.comments) : ''}">
+            ${escapeHtml(g.activity)}: <strong class="grade-score">${g.score}</strong> (${g.percentage}%)
+            <button onclick="deleteGrade('${student.id}', '${g.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.75rem;">&times;</button>
+          </span>
+        `).join('');
+
+        return `
+          <tr>
+            <td><strong>${escapeHtml(student.code)}</strong></td>
+            <td>
+              <div style="font-weight:700;">${escapeHtml(student.name)}</div>
+              <div style="font-size:0.775rem; color:var(--plomo-500);">${escapeHtml(student.email)}</div>
+              ${grades.length > 0 ? `<div class="grades-subtable">${gradesHtml}</div>` : ''}
+            </td>
+            <td style="min-width: 140px;">
+              <span style="font-weight:700;">${totalPercentage.toFixed(1)}%</span> de 100%
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: ${Math.min(totalPercentage, 100)}%;"></div>
+              </div>
+            </td>
+            <td><strong style="font-size: 1.05rem; color: var(--azul-texto);">${currentAverage}</strong></td>
+            <td><span class="badge-status ${badgeClass}">${statusText}</span></td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="openAddGradeModal('${student.id}', '${escapeHtml(student.name)}', ${totalPercentage})">
+                + Nota
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Renderizar Reporte del Curso
+    function renderCourseReport(report) {
+      const metrics = report.metrics || {};
+      document.getElementById('repClassAvg').textContent = (metrics.classAverage || 0).toFixed(2);
+      document.getElementById('repApproved').textContent = metrics.approvedCount || 0;
+      document.getElementById('repInProgress').textContent = metrics.inProgressCount || 0;
+      document.getElementById('repFailed').textContent = metrics.failedCount || 0;
+
+      if (metrics.topStudent) {
+        document.getElementById('repHonorRoll').textContent = `${metrics.topStudent.name} (${metrics.topStudent.code}) - Nota: ${metrics.topStudent.average}`;
+      } else {
+        document.getElementById('repHonorRoll').textContent = 'Sin calificaciones aún';
+      }
+
+      if (metrics.lowestStudent) {
+        document.getElementById('repLowestRoll').textContent = `${metrics.lowestStudent.name} (${metrics.lowestStudent.code}) - Nota: ${metrics.lowestStudent.average}`;
+      } else {
+        document.getElementById('repLowestRoll').textContent = 'Sin calificaciones aún';
+      }
+
+      // Ranking
+      const rankingBody = document.getElementById('rankingTableBody');
+      const sorted = [...(report.students || [])].sort((a, b) => b.currentAverage - a.currentAverage);
+
+      if (sorted.length === 0) {
+        rankingBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--plomo-500);">No hay estudiantes calificados.</td></tr>`;
+        return;
+      }
+
+      rankingBody.innerHTML = sorted.map((s, idx) => {
+        let badge = 'badge-progreso';
+        if (s.status === 'Aprobado') badge = 'badge-aprobado';
+        else if (s.status === 'Reprobado') badge = 'badge-reprobado';
+
+        return `
+          <tr>
+            <td><strong>#${idx + 1}</strong></td>
+            <td>${escapeHtml(s.code)}</td>
+            <td><strong>${escapeHtml(s.name)}</strong></td>
+            <td>${s.accumulatedPercentage}%</td>
+            <td><strong style="color:var(--azul-texto);">${s.currentAverage.toFixed(2)}</strong></td>
+            <td><span class="badge-status ${badge}">${s.status}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 5. ACCIONES: CREAR CURSO
+    async function handleCreateCourse(e) {
+      e.preventDefault();
+      const code = document.getElementById('courseCode').value.trim();
+      const name = document.getElementById('courseName').value.trim();
+      const professor = document.getElementById('courseProfessor').value.trim();
+      const description = document.getElementById('courseDescription').value.trim();
+      const passingGrade = parseFloat(document.getElementById('coursePassingGrade').value);
+      const maxGrade = parseFloat(document.getElementById('courseMaxGrade').value);
+
+      try {
+        const res = await fetch('/courses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, name, professor, description, passingGrade, maxGrade })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Error al crear curso');
+        }
+
+        closeModal('modalCreateCourse');
+        document.getElementById('formCreateCourse').reset();
+        showToast(`✅ Curso '${name}' creado exitosamente`);
+
+        await loadCourses();
+        selectCourse(data.id);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // 6. ACCIONES: INSCRIBIR ESTUDIANTE
+    async function handleRegisterStudent(e) {
+      e.preventDefault();
+      if (!selectedCourseId) return;
+
+      const code = document.getElementById('studentCode').value.trim();
+      const name = document.getElementById('studentName').value.trim();
+      const email = document.getElementById('studentEmail').value.trim();
+
+      try {
+        const res = await fetch(`/courses/${selectedCourseId}/students`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, name, email })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Error al inscribir estudiante');
+        }
+
+        closeModal('modalRegisterStudent');
+        document.getElementById('formRegisterStudent').reset();
+        showToast(`✅ Alumno '${name}' inscrito`);
+
+        await selectCourse(selectedCourseId);
+        await loadCourses();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // 7. ACCIONES: REGISTRAR NOTA
+    function openAddGradeModal(studentId, studentName, currentPercentage) {
+      document.getElementById('gradeStudentId').value = studentId;
+      document.getElementById('gradeStudentInfo').textContent = `Alumno: ${studentName} (Acumula: ${currentPercentage}% / Restante: ${(100 - currentPercentage).toFixed(1)}%)`;
+      document.getElementById('gradePercentage').max = (100 - currentPercentage).toFixed(1);
+      document.getElementById('gradeScore').max = selectedCourseData ? selectedCourseData.maxGrade : 5.0;
+      openModal('modalAddGrade');
+    }
+
+    async function handleAddGrade(e) {
+      e.preventDefault();
+      const studentId = document.getElementById('gradeStudentId').value;
+      const activity = document.getElementById('gradeActivity').value.trim();
+      const score = parseFloat(document.getElementById('gradeScore').value);
+      const percentage = parseFloat(document.getElementById('gradePercentage').value);
+      const comments = document.getElementById('gradeComments').value.trim();
+
+      try {
+        const res = await fetch(`/courses/${selectedCourseId}/students/${studentId}/grades`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activity, score, percentage, comments })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Error al agregar nota');
+        }
+
+        closeModal('modalAddGrade');
+        document.getElementById('formAddGrade').reset();
+        showToast(`✅ Nota de '${activity}' registrada`);
+
+        await selectCourse(selectedCourseId);
+        await loadCourses();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Eliminar una nota
+    async function deleteGrade(studentId, gradeId) {
+      if (!confirm('¿Deseas eliminar esta calificación?')) return;
+
+      try {
+        const res = await fetch(`/courses/${selectedCourseId}/students/${studentId}/grades/${gradeId}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || 'Error al eliminar');
+        }
+
+        showToast('🗑️ Calificación eliminada');
+        await selectCourse(selectedCourseId);
+        await loadCourses();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Eliminar curso actual
+    async function deleteCurrentCourse() {
+      if (!selectedCourseId || !selectedCourseData) return;
+      if (!confirm(`¿Estás seguro de eliminar el curso '${selectedCourseData.name}' (${selectedCourseData.code})? Se eliminarán todos sus estudiantes y notas.`)) return;
+
+      try {
+        const res = await fetch(`/courses/${selectedCourseId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || 'Error al eliminar curso');
+        }
+
+        showToast('🗑️ Curso eliminado con éxito');
+        selectedCourseId = null;
+        await loadCourses();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // 8. ESQUEMA SQL SUPABASE
+    async function loadSqlSchema() {
+      try {
+        const res = await fetch('/api/supabase/schema');
+        const data = await res.json();
+        currentSqlSchema = data.sql || '';
+        document.getElementById('sqlContentBlock').textContent = currentSqlSchema;
+      } catch (err) {
+        console.error('Error al cargar schema SQL:', err);
+      }
+    }
+
+    function openSqlModal() {
+      openModal('modalSql');
+    }
+
+    function copySqlToClipboard() {
+      if (!currentSqlSchema) return;
+      navigator.clipboard.writeText(currentSqlSchema).then(() => {
+        showToast('📋 ¡Script SQL copiado al portapapeles!');
+      }).catch(() => {
+        showToast('No se pudo copiar automáticamente. Por favor selecciónalo manualmente.');
+      });
+    }
+
+    // Control de pestañas
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      if (tabId === 'tabStudents') {
+        document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+      } else {
+        document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+      }
+
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // Utilidades de Modales
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function openCreateCourseModal() {
+      openModal('modalCreateCourse');
+    }
+
+    function openRegisterStudentModal() {
+      openModal('modalRegisterStudent');
+    }
+
+    // Mensaje Toast
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
+
