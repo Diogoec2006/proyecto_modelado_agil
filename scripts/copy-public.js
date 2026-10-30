@@ -30,3 +30,4 @@ if (fs.existsSync(schemaSrc)) {
 }
 
 console.log('✅ Archivos estáticos y rutas preparados exitosamente para AWS Amplify en dist/');
+
